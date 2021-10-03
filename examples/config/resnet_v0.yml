@@ -13,6 +13,5 @@ data_train: examples/data/train_data_classif.mat
 data_valid: examples/data/valid_data_classif.mat
 data_test: examples/data/test_data_classif.mat
 device_id: 0
-#checkpoint: checkpoint_best_125000_0.8579.pt
 
-checkpoint: checkpoint_best_195000_0.8626.pt
+#checkpoint: checkpoint_best_195000_0.8626.pt
