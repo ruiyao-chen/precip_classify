@@ -74,7 +74,7 @@ make
 conda activate atmosphere
 ```
 
-# How to run model
+# How to run the model
 
 Our tool provides three major python script commands for users:
 - **python run.py train:** Training models with different parameter settings to approach a stable state and also save checkpoints for future testing. Using the following command to get more helpful information for each parameter.
