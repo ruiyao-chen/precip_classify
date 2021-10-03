@@ -2,14 +2,25 @@
 # 1. Introduction 
 Ruiyao Chen     Ruiyao.Chen@Vanderbilt.edu
 
-This project aims at developing a machine-learning algorithm to diagnose precipitation types from liquid, mixed and ice phases using active and passive microwave observations.
+This project aims at developing a novel CNN-based deep learning model with capability of attention mechanism to diagnose precipitation types from liquid, mixed and ice phases using active and passive microwave observations. The experimental results show superior performance. 
 
-Specifically speaking, it combines Convolutional Neural Network (CNN) and Resnet18 to extract the high-level features from different dimension space so that the determined parameters can capture the complicated characteristics of the data from different angles.
+Once the data preprocessing including collocation and data cleaning, we then split resulted paired matchups into three subsets, training, testing and validation, in a ratio of 8:1:1. Each subset has 13 features and 2 labels. The features include the scattering-induced brightness temperatures depressions (delta_TB) and corresponding observational zenith angles. The differences between the passive microwave observations and the clear-sky radiative transfer simulations were regarded as deltaTBs. The labels are corresponding to the precipitation types from GMI/DPR. 
 
-The dataset was split into 3 sub-datasets: 70% for training, 20% for testing, and 10% for validation.
 
-Each sub-dataset has 13 features and 2 labels. The features include the scattering-induced brightness temperatures depressions (deltaTB) and corresponding observational zenith angles. The differences between the passive microwave observations and the clear-sky radiative transfer simulations were regarded as deltaTBs . The labels are corresponding to the precipitation types from GMI/DPR.
-For better classification performance, I used two types of labels. the first type (0/1) only indicates no/rain and rain. The second (0/1/3/4) provides more details for rain events by indicating no rain/liquid/ice/mixed.
+This project aims at designing an enhanced CNN model with hybrid local and global attention mechanisms for classifying precipitation types.  Particularly, the model was developed atop of 1D ResNet-18 with following modifications:  
+1) Strengthened functionality of the core bottleneck block in ResNet-18 by replacing spatial convolution with a local self-attention layer to capture spatial knowledge of an observations among local area. 
+2) Inserted a global self-attention module before the last 1x1 downsampling convolution to exploit global relationships among features. All other structures, including the number of layers and spatial downsampling, were preserved. 
+
+In addition, we leverage multi-task learning techniques to optimize the proposed model with respect to two sub-tasks. The first task is a binary classification problem to identify whether an observation is a case of rain or no-rain event; The second one is a multinomial classification issue of classifying instances into four fine-grained classes: no rain, liquid, ice and mixed. 
+
+In the early develop phase, we also implemented the following baseline models, and we included them in this package for reference purposes. 
+-	Gaussian Naive Bayes (GaussianNB)
+-	Random Forest
+-	ResNet-18 with only one task
+-	A simple Multilayer Perceptron (MLP) model
+-	Self-Attention model (MLP with attention)
+
+
 
 # Project and Code Structure
 
@@ -63,23 +74,6 @@ make
 conda activate atmosphere
 ```
 
-5. A few other frequently used commands
-```
-# list all the conda environment available
-conda info --envs  
-# Create new environment named as `envname`
-conda create --name envname
-# Remove environment and its dependencies
-conda remove --name envname --all
-# Clone an existing environment
-conda create --name clone_envname --clone envname
-```
-
-# Data Description
-
-- Input data format
-- Output lable format
-
 # How to run model
 
 Our tool provides three major python script commands for users:
@@ -115,4 +109,5 @@ $ python run.py "train" --config examples/config/resnet_v0.yml
 $ python run.py "test" --config examples/config/resnet_v0.yml \
         --device_id 1 \
         --batch_size 16
+        --checkpoint 
 ```

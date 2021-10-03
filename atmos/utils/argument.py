@@ -180,6 +180,7 @@ def model_opts(parser):
               choices=["mlp", "selfattn",
                        "transformer", "random_forest", "gaussian_nb", "lstm", "resnet18"],
               default="mlp")
+    group.add_argument('--multi_label', action='store_true')
     group.add('--regression', type=str, required=False, choices=["v1", "v2", "v3"], default=None)
     group.add('--early_stopping', '-early_stopping', type=int, default=10,
               help='Number of validation steps without improving.')
@@ -324,6 +325,7 @@ def train_commands(parser):
 def test_commands(parser):
     config_opts(parser)
     model_opts(parser)
+    optimizer_opts(parser)
     checkpoint_opts(parser)
     runtime_opts(parser)
     dataset_opts(parser)
@@ -359,4 +361,11 @@ def get_main_argument(desc='Atmosphere'):
     run_commands(mode.add_parser('run'))
 
     args, kwargs = parser.parse_known_args()
+
+    if args.multi_label:
+        assert args.loss_func == 'multi_loss', "Please use multiple loss function for multiple task learning"
+
+        assert args.classification == "resnet18", "Multi task learning only support ResNet Model"
+
+
     return args, kwargs

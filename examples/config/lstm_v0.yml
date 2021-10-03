@@ -1,0 +1,8 @@
+version: v0
+classification: 'lstm'
+dropout: 0.5
+epochs: 1000
+data_train: examples/data/train_data_classif.mat
+data_valid: examples/data/valid_data_classif.mat
+data_test: examples/data/test_data_classif.mat
+device_id: 2

@@ -91,4 +91,8 @@ ENV/
 
 .idea
 
+data/
+output/
 temp/
+examples/checkpoints
+examples/data

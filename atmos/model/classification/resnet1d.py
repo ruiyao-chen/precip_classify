@@ -507,7 +507,6 @@ class Generator(nn.Module):
 class ResNet18(BaseModel):
     def __init__(self, ctx, feature_size, label_size, **kwargs):
         super(ResNet18, self).__init__(ctx, feature_size, label_size)
-        self.config = ctx.config
         step_size = kwargs.get("step_size", 3)
         fc_config = {
             'fc_dim': 512,
@@ -515,6 +514,7 @@ class ResNet18(BaseModel):
             'dropout': 0.5,
             'trans_planes': 128
         }
+
         num_outputs = 256
         block_type = BasicBlock1D if self.config.resnet_block == 'Block' else Bottleneck1D
 
@@ -524,7 +524,8 @@ class ResNet18(BaseModel):
 
         self.gen1 = Generator(num_outputs, label_size[0])
 
-        self.gen2 = Generator(num_outputs, label_size[1])
+        if self.multi_label:
+            self.gen2 = Generator(num_outputs, label_size[1])
 
     def forward(self, x, **kwargs):
 
@@ -532,5 +533,8 @@ class ResNet18(BaseModel):
             x = x.unsqueeze(1)
         out = self.network(x.transpose(1, -1))  # torch.Size([128, 256])
         a = self.gen1(out)
-        b = self.gen2(out)
-        return a, b
+        if self.multi_label:
+            b = self.gen2(out)
+            return a, b
+        else:
+            return a
