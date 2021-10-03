@@ -13,9 +13,6 @@ def load_matlab_data(dataPath: str, data='train', multi_label=False):
     # convert data into tensor and expand the dimension; torch.Size([82871, 3, 13])
     feature = data_np['sample']
 
-    # if feature.ndim == 2:
-    #     feature = np.expand_dims(feature, axis=1)
-
     # convert data into tensor and expand the dimension; torch.Size([82871, 1]), array([0, 1, 2, 3], dtype=uint8)
     label_v1 = data_np['label']
     # array([0, 1], dtype=uint8)
@@ -34,10 +31,7 @@ def load_matlab_data(dataPath: str, data='train', multi_label=False):
 
 def load_hdf5_data(dataPath: str, data='train', bias=None, multi_label=False):
     with h5py.File(dataPath, 'r') as hf:
-        feature = np.array(hf['inputs']).transpose()[:, [0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
-
-        # if feature.ndim == 2:
-        #     feature = np.expand_dims(feature, axis=1)[:, :, [0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]
+        feature = np.array(hf['inputs']).transpose()
 
     if multi_label:
         label = np.ones((feature.shape[0], 2))
@@ -75,6 +69,7 @@ def save_hdf5_data(dataPath: str, data, name='Predict'):
 def load_netcdf_data(dataPath: str, device='cpu', data='train'):
     f = NetCDF_Dataset(dataPath)
     return f
+
 
 def load_data(dataPath, data='train', bias=None, multi_label=False):
     if dataPath is None:
