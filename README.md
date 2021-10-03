@@ -100,14 +100,11 @@ There are two ways to specify parameter settings for each command:
 
 - **YML-based configuration file**, You can specify the values of parameters in a YML config file (See more examples in the config folder of each dataset)
 ```
-$ python run.py "train" --config examples/config/resnet_v0.yml
+$ python run.py train --config examples/config/resnet_v0.yml
 ```
 
-- **Command line arguments**, you can append line arguments with different parameters indicators
+- **Command line arguments**, you can append line arguments with different parameters indicators.
 
 ```
-$ python run.py "test" --config examples/config/resnet_v0.yml \
-        --device_id 1 \
-        --batch_size 16
-        --checkpoint 
+$ python run.py predict --config examples/config/resnet_v0.yml --device_id 1 --batch_size 16 --checkpoint checkpoint_best_195000_0.8626.pt
 ```
