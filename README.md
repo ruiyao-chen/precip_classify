@@ -103,8 +103,8 @@ There are two ways to specify parameter settings for each command:
 $ python run.py train --config examples/config/resnet_v0.yml
 ```
 
-- **Command line arguments**, you can append line arguments with different parameters indicators.
+- **Command line arguments**, you can append line arguments with different parameters indicators. For example, you can perform the following command to run predit task using a well-trained checkpoint. 
 
 ```
-$ python run.py predict --config examples/config/resnet_v0.yml --device_id 1 --batch_size 16 --checkpoint checkpoint_best_195000_0.8626.pt
+$ python run.py predict --config examples/config/resnet_v0.yml --checkpoint checkpoint_best_195000_0.8626.pt
 ```
