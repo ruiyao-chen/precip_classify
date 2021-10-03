@@ -126,6 +126,7 @@ class DeepLearningRunner(Runner):
             criterion = nn.CrossEntropyLoss()
             self.logging.info("Loss function: cross entropy")
         elif opt.loss_func == 'multi_loss':
+            assert opt.multi_label, "Please enable multiple label for using of multiple loss"
             criterion = CustomMultiLossLayer(opt.device)
             self.logging.info("Loss function: Multiple Task cross entropy")
 
@@ -160,60 +161,6 @@ class DeepLearningRunner(Runner):
     def get_current_step(self):
         return self._step
 
-    def get_test_data(self):
-        for test_path in self.context.data_test:
-            test_sample, test_label, test_dim = load_data(test_path, 'test',
-                                                          self.context.data_test_bias, multi_label=self.multi_label)
-            yield (DataLoader(TensorDataset(Tensor(test_sample).to(self.device),
-                                            Tensor(test_label).type(torch.int64).squeeze(-1).to(self.device)),
-                              batch_size=self.config.batch_size, shuffle=False), test_dim)
-
-    def get_labels_stats(self, task_labels, data="train"):
-        self.logging.info(f"The stats of label for {data} dataset")
-        for idx in range(task_labels.shape[-1]):
-            labels = task_labels[:, idx]
-            nums_instance = len(labels)
-            for label in np.unique(labels):
-                cnt = np.count_nonzero(labels==label)
-                self.logging.info(f"[{data}]-[{idx}] Percentage of Label {label}: {cnt / nums_instance: .4f}% ({cnt} / {nums_instance})")
-
-    def load_data(self):
-
-        valid_sample, valid_label, self.valid_dim = load_data(self.context.data_valid, 'valid', multi_label=self.multi_label)
-        self.feature_size = valid_sample.shape[-1]
-        self.labels_size = []
-        for idx in range(valid_label.shape[-1]):
-            self.labels_size.append(np.unique(valid_label[:, idx]).shape[0])
-
-        self.step_size = valid_sample.shape[1]
-
-        self.get_labels_stats(valid_label, "valid")
-        train_ds = None
-        valid_ds = None
-        if self.task in ["train", "run"]:
-            train_sample, train_label, self.train_dim = load_data(self.context.data_train, 'train', multi_label=self.multi_label)
-
-            self.get_labels_stats(train_label, "train")
-
-            # Get input dataset feature size
-            if train_sample.shape[1] != valid_sample.shape[1]:
-                self.logging.error(f"The size feature of training[{train_sample.shape[1]}] and "
-                                   f"testing[{valid_sample.shape[1]}] dataset does not match")
-                raise ValueError
-
-            # Build training iterated datasets for training process.
-            train_ds = DataLoader(TensorDataset(Tensor(train_sample).to(self.device),
-                                                Tensor(train_label).type(torch.int64).squeeze(-1).to(self.device)),
-                                  batch_size=self.config.batch_size,
-                                  shuffle=True)
-            valid_ds = DataLoader(TensorDataset(Tensor(valid_sample).to(self.device),
-                                                Tensor(valid_label).type(torch.int64).squeeze(-1).to(self.device)),
-                                  batch_size=self.config.batch_size,
-                                  shuffle=False)
-
-
-        return train_ds, valid_ds, self.get_test_data()
-
     def train(self):
         train_time = []
         self.logging.info("Traing model ...")
@@ -223,12 +170,25 @@ class DeepLearningRunner(Runner):
             hidden = self.model.init_hidden(self.config.batch_size)
         try:
             early_stopping = False
+            train_sample, train_label = self.train_dataset
+            # Build training iterated datasets for training process.
+            train_ds = DataLoader(TensorDataset(Tensor(train_sample).to(self.device),
+                                                Tensor(train_label).type(torch.int64).squeeze(-1).to(self.device)),
+                                  batch_size=self.config.batch_size,
+                                  shuffle=True)
+
+            valid_sample, valid_label = self.valid_dataset
+            valid_ds = DataLoader(TensorDataset(Tensor(valid_sample).to(self.device),
+                                                Tensor(valid_label).type(torch.int64).squeeze(-1).to(self.device)),
+                                  batch_size=self.config.batch_size,
+                                  shuffle=False)
+
             for epoch in range(self.start_epoch, self.config.epochs):
                 start_t = time.time()
 
                 training_loss = 0.0
                 # x: torch.Size([32, 16, 1]), y: torch.Size([32, 1, 1])
-                for i, batch in enumerate(self.train_dataset):
+                for i, batch in enumerate(train_ds):
                     inputs, labels = batch  # torch.Size([128, 3, 13]), torch.Size([128])
 
                     # clear previous training gradients
@@ -252,7 +212,7 @@ class DeepLearningRunner(Runner):
                     training_loss += loss.item()
                     # # Evaluate the model every [self.config.valid_steps]
                     if self.get_current_step % self.config.valid_steps == 0:
-                        stats, ytest, ypred = self.evaluate(epoch, hidden=hidden)
+                        stats, ytest, ypred = self.evaluate(valid_ds, epoch, hidden=hidden)
                         accuracy = stats['accuracy']
 
                         if self.early_stopping is not None:
@@ -302,7 +262,7 @@ class DeepLearningRunner(Runner):
                                f"checkpoint_latest_{self.get_current_step}.pt")
         self.save_model(self.latest_model, epoch=epoch, loss=float('inf'))
 
-    def evaluate(self, epoch, **kwargs):
+    def evaluate(self, valid_dataset, epoch, **kwargs):
         self.logging.info(f"Epoch {epoch}/{self.config.epochs}, step {self.get_current_step}: Performance Evaluation ...")
         ytest = []
         ypred = []
@@ -310,13 +270,16 @@ class DeepLearningRunner(Runner):
         # make model work in evaluate state
         self.model.eval()
         with torch.no_grad():
-            for data, labels in self.valid_dataset:
+            for data, labels in valid_dataset:
                 if hidden is not None:
                     hidden = tuple([each.data for each in hidden])
                 outputs = self.model(data, hidden=hidden)
-                _, predt1 = torch.max(outputs[0], 1)
-                _, predt2 = torch.max(outputs[1], 1)
-                predicted = torch.stack([predt1, predt2], dim=1)
+                if isinstance(outputs, tuple):
+                    _, predt1 = torch.max(outputs[0], 1)
+                    _, predt2 = torch.max(outputs[1], 1)
+                    predicted = torch.stack([predt1, predt2], dim=1)
+                else:
+                    _, predicted = torch.max(outputs, 1)
                 ytest.append(labels)
                 ypred.append(predicted)
 
@@ -329,6 +292,14 @@ class DeepLearningRunner(Runner):
         # 2. Convert a tensor into a numpy data using [.detach().numpy()]
         ytest = ytest.cpu().detach().numpy() if ytest.is_cuda else ytest.detach().numpy()
         ypred = ypred.cpu().detach().numpy() if ypred.is_cuda else ypred.detach().numpy()
+
+        if ytest.ndim == 1:
+            ytest = ytest[:, None]
+
+        if ypred.ndim == 1:
+            ypred = ypred[:, None]
+
+
 
         task_0_stats = None
         stats = None
@@ -353,41 +324,60 @@ class DeepLearningRunner(Runner):
         if self.config.classification == "lstm":
             hidden = self.model.init_hidden(self.config.batch_size)
 
-        for (test_data, test_dim), test_data_name in zip(self.test_dataset, self.context.data_test):
-            # ytest = []
+
+
+        for (test_sample, test_label), test_data_name in zip(self.test_dataset, self.context.data_test):
+
+            test_ds = DataLoader(TensorDataset(Tensor(test_sample).to(self.device),
+                                               Tensor(test_label).type(torch.int64).squeeze(-1).to(self.device)),
+                                 batch_size=self.config.batch_size,
+                                 shuffle=False)
+
+            ytest = []
             ypred = []
             save_path = join(self.context.predict_dir,
                              f"predict_{self.context.version}_{basename(test_data_name)}")
             # make model work in evaluate state
             self.model.eval()
             with torch.no_grad():
-                for data, labels in test_data:
+                for data, labels in test_ds:
                     if hidden is not None:
                         hidden = tuple([each.data for each in hidden])
 
                     outputs = self.model(data, hidden=hidden)
-                    _, predt1 = torch.max(outputs[0], 1)
-                    _, predt2 = torch.max(outputs[1], 1)
-                    predicted = torch.stack([predt1, predt2], dim=1)
-                    # ytest.append(labels)
+                    if isinstance(outputs, tuple):
+                        _, predt1 = torch.max(outputs[0], 1)
+                        _, predt2 = torch.max(outputs[1], 1)
+                        predicted = torch.stack([predt1, predt2], dim=1)
+                    else:
+                        _, predicted = torch.max(outputs, 1)
+                    ytest.append(labels)
                     ypred.append(predicted)
             # make model work in train state
             self.model.train()
-            # ytest = torch.cat(ytest, 0)
+            ytest = torch.cat(ytest, 0)
             ypred = torch.cat(ypred, 0)
 
             # 1. copy the data from cuda to cpu using [.cpu] if the dataset is a tensor of cuda
             # 2. Convert a tensor into a numpy data using [.detach().numpy()]
-            # ytest = ytest.cpu().detach().numpy() if ytest.is_cuda else ytest.detach().numpy()
+            ytest = ytest.cpu().detach().numpy() if ytest.is_cuda else ytest.detach().numpy()
             ypred = ypred.cpu().detach().numpy() if ypred.is_cuda else ypred.detach().numpy()
+
+            if ytest.ndim == 1:
+                ytest = ytest[:, None]
+
+            if ypred.ndim == 1:
+                ypred = ypred[:, None]
+
 
             self.logging.info(f"Save predict test result: {save_path}")
             save_hdf5_data(save_path, ypred)
 
-            # for idx in range(ytest.shape[-1]):
-            #     y_pred = ypred[:, idx]
-            #     y_test = ytest[:, idx]
-            #     self.performance_evaluate(y_pred, y_test, idx)
+            for idx in range(ytest.shape[-1]):
+                y_pred = ypred[:, idx]
+                y_test = ytest[:, idx]
+                if np.unique(y_test).shape[0] > 1:
+                    self.performance_evaluate(y_pred, y_test, idx)
 
 
     def save_model(self, model_path, **kwargs):

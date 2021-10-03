@@ -1,0 +1,15 @@
+# multi-task branch
+version: v1
+classification: 'resnet18'
+resnet_block: 'Bottleneck'
+resnet_atts: 'se'
+resnet_local_atts: 'CotLayer'
+loss_func: 'cross_entropy'
+dropout: 0.5
+epochs: 1000
+valid_steps: 5000
+data_train: examples/data/train_data_classif.mat
+data_valid: examples/data/valid_data_classif.mat
+data_test: examples/data/test_data_classif.mat
+device_id: 0
+#checkpoint: checkpoint_best_25000_0.7828.pt
