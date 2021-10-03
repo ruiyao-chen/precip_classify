@@ -108,7 +108,7 @@ class Context:
         else:
             self.data_test = []
 
-        self.data_test_bias = join(self.project_dir, self.config.data_test_bias)
+        self.data_test_bias = join(self.project_dir, self.config.data_test_bias) if self.config.data_test_bias else None
 
         if self.task == 'predict' and self.checkpoint is None:
             self.logger.info("Please set up checkpoint path")

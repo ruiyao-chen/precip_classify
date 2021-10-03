@@ -1,17 +1,15 @@
-# master branch
+# multi-task branch
 version: v0
 classification: 'resnet18'
-resnet_layers:
-  - 1
-  - 2
 resnet_block: 'Bottleneck'
 resnet_atts: 'se'
 resnet_local_atts: 'CotLayer'
+loss_func: 'multi_loss'
 dropout: 0.5
 epochs: 1000
-data_train: examples/data/3-13/train_data_classf_mw_v0.mat
-data_valid: examples/data/3-13/test_data_classf_mw_v0.mat
-data_test: examples/data/test/01/
-data_test_bias: examples/data/test/fy3c_bias.nc
+valid_steps: 5000
+data_train: examples/data/train_data_classif.mat
+data_valid: examples/data/valid_data_classif.mat
+data_test: examples/data/test_data_classif.mat
 device_id: 0
-#checkpoint: pretrain_checkpoint_best_70000_0.6416.pt
+#checkpoint: checkpoint_best_25000_0.7828.pt
