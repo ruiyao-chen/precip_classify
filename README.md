@@ -112,4 +112,4 @@ python run.py predict --config examples/config/resnet_v0.yml --checkpoint checkp
 
 # License
 
-MIT. See [LICENSE](LICENSE).
+MIT License, copyright Vanderbilt University. See [LICENSE](LICENSE).
