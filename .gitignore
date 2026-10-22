@@ -96,3 +96,5 @@ output/
 temp/
 examples/checkpoints
 examples/data
+# IDE run configurations
+.run/
