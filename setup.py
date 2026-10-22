@@ -18,7 +18,7 @@ setup(
     long_description=readme,
     author='Ruiyao Chen',
     author_email='Ruiyao.Chen@vanderbilt.edu',
-    url='https://github.com/Chen-Rachel',
+    url='https://github.com/ruiyao-chen/precip_classify',
     license=license,
     packages=find_packages(exclude=('tests', 'docs'))
 )

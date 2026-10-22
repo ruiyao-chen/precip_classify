@@ -1,108 +1,115 @@
+# precip_classify: precipitation type from passive microwave with attention-augmented CNNs
 
-# 1. Introduction 
-Ruiyao Chen     Ruiyao.Chen@Vanderbilt.edu
+Ruiyao Chen · Ruiyao.Chen@Vanderbilt.edu
 
-This project aims at developing a novel CNN-based deep learning model with capability of attention mechanism to diagnose precipitation types from liquid, mixed and ice phases using passive microwave observations. The experimental results show superior performance. 
+A CNN-based deep-learning model with local and global attention that diagnoses
+precipitation phase (liquid, mixed, ice) from passive microwave observations.
+This is the code behind:
 
-After the data preprocessing including collocation and data cleaning, we then split resulted paired matchups into three subsets, training, testing and validation, in a ratio of 8:1:1. Each subset has 15 features and 2 labels. The features include the scattering-induced brightness temperatures depressions (delta_TB) and corresponding observational zenith angles as well as geographic cooridnates. The differences between the passive microwave observations and the clear-sky radiative transfer simulations were regarded as deltaTBs. The labels are corresponding to the precipitation types from GMI/DPR (Lable 1 and Lable 2). 
+> R. Chen and R. Bennartz, "A Deep-Learning Scheme for Hydrometeor Type Classification
+> Using Passive Microwave Observations," *Remote Sensing*, 15(10), 2670, 2023.
+> [doi:10.3390/rs15102670](https://doi.org/10.3390/rs15102670)
 
-This enhanced CNN model is combined with hybrid local and global attention mechanisms for classifying precipitation types.  Particularly, the model was developed atop of 1D ResNet-18 with following modifications:  
-1) Strengthened functionality of the core bottleneck block in ResNet-18 by replacing spatial convolution with a local self-attention layer to capture spatial knowledge of an observations among local area. 
-2) Inserted a global self-attention module before the last 1x1 downsampling convolution to exploit global relationships among features. All other structures, including the number of layers and spatial downsampling, were preserved. 
+The published model reaches **84.7% classification accuracy** on held-out test data,
+and its global annual cycles of precipitation occurrence agree with the GPM
+Dual-frequency Precipitation Radar (DPR).
 
-In addition, we leverage multi-task learning techniques to optimize the proposed model with respect to two sub-tasks. The first task is a binary classification problem to identify whether an observation is a case of rain or no-rain event (referred as Lable 1); The second one is a multinomial classification issue of classifying instances into four fine-grained classes: no rain, liquid, ice and mixed (referred as Lable 2). 
+# 1. Introduction
 
-Please note that we also implemented the following baseline models during the early develop phase which are included in this package as well for reference purposes. 
--	Gaussian Naive Bayes (GaussianNB)
--	Random Forest
--	ResNet-18 with only one task
--	A simple Multilayer Perceptron (MLP) model
--	Self-Attention model (MLP with attention)
+After preprocessing (collocation and data cleaning), the paired matchups are split
+into training, validation and test subsets in an 8:1:1 ratio. Each sample has 15
+features and 2 labels. The features are the scattering-induced brightness-temperature
+depressions (ΔTB), the observation zenith angles, and the geographic coordinates. ΔTB is
+the difference between the passive microwave observation and a clear-sky
+radiative-transfer simulation. The labels are precipitation types from GPM GMI/DPR
+(Label 1 and Label 2).
 
+The model combines a CNN with hybrid local and global attention. It is built on a 1D
+ResNet-18 with two modifications:
 
-# Project and Code Structure
+1. The core bottleneck block is strengthened by replacing the spatial convolution with
+   a local self-attention layer, to capture spatial context around each observation.
+2. A global self-attention module is inserted before the last 1×1 down-sampling
+   convolution, to exploit global relationships among features. All other structure,
+   including the number of layers and spatial down-sampling, is preserved.
+
+The model is trained with **multi-task learning** on two sub-tasks:
+
+- **Label 1:** binary classification, rain vs. no rain.
+- **Label 2:** four-class classification: no rain, liquid, ice, mixed.
+
+Baseline models implemented during development are included for reference:
+
+- Gaussian Naive Bayes
+- Random forest
+- ResNet-18 with a single task
+- A simple multilayer perceptron (MLP)
+- A self-attention model (MLP with attention)
+
+# 2. Project and code structure
 
 ```
-├── .run/
-├── atmos/
-├── docs/
+├── atmos/              source code
+│   ├── model/          classification (CNN, ResNet-1D, LSTM, MLP, RF, self-attention,
+│   │                   transformer) and regression models, plus DL/ML runners
+│   └── utils/          config parsing, data input, early stopping, logging
+├── docs/               Sphinx documentation skeleton
 ├── examples/
-│   ├── config
-│   ├── data
-│   ├── output
-├── LICENSE
-├── Makefile
-├── README.md
-├── requirements.txt
-├── run.py
+│   ├── config/         YAML configurations, one per model
+│   ├── data/           train / validation / test matchups (.mat)
+│   └── output/         trained ResNet-18 checkpoint (Git LFS)
+├── atmosphere.yml      conda environment (Linux, CUDA 10.1)
+├── Makefile            creates the conda environment
+├── requirements.txt    core Python packages
+├── run.py              entry point
 └── setup.py
 ```
-* **.run/**  : This directory holds shell scripts and Pycharm run configurations for training and testing.
-* **atmos/**  : The directory contains source code, but now there are subdirectories. 
-* **docs/** :  The documents provided by this project
-* **examples/** : A list of datasets, and their corresponding YML configurations files. The output of models will also be saved into the corresponding dataset folder. 
-* **LICENSE** : The license for this project
-* **Makefile** : A makefile to compile this project  
-* **requirements.txt** : A list of required python packages
-* **run.py** : A run file for python projects  
-* **setup.py** : A setup file for python projects
 
-To run the examples, you need the following programs installed:
-- **make**
-- **conda**
-- **cuda**
+# 3. Installation
 
-## Software Package Installation and Configuration
+Requirements: Linux, an NVIDIA GPU with CUDA 10.1 (PyTorch 1.7; the preprocessing utilities use CuPy),
+conda, and [Git LFS](https://git-lfs.com) to download the trained checkpoint
+(about 110 MB).
 
-1. Install CUDA and GPU Driver if using GPU (We are using cuda-10.1)
-
-2. Install latest miniconda as Python virtual environment management
-   
-3. Create a conda environment using a YML config file:
-```
-conda env create --name "atmosphere" -f atmosphere.yml
-```
-Or just execute make command to install all needed packages automatically.
-```
-make
-```
-
-4. Activate Python Virtual Environment
-```
+```bash
+git lfs install
+git clone https://github.com/ruiyao-chen/precip_classify.git
+cd precip_classify
+make                       # = conda env create --name atmosphere -f atmosphere.yml
 conda activate atmosphere
 ```
 
-# How to run the model
+# 4. How to run
 
-This tool provides three major python script commands for users:
-- **python run.py train:** Training models with different parameter settings to approach a stable state and also save checkpoints for future testing. Using the following command to get more helpful information for each parameter.
-```
-python run.py train --help
-```
+`run.py` has three commands:
 
-- **python run.py predict:** Performing models to classify context labels for test data using the best model checkpoint. Using the following command to get more helpful information for each parameter.
+- `python run.py train`: train a model and save checkpoints.
+- `python run.py predict`: classify the test data with a trained checkpoint.
+- `python run.py run`: train, then predict on the test data.
 
-```
-python run.py predict --help
-```
+Add `--help` to any command to see its parameters. Parameters can come from a YAML
+file (see `examples/config/`) or the command line:
 
-
-- **python run.py run:** Training models with different parameter settings to approach a stable state, and then predict context labels for test datasets.
-
-```
-python run.py run --help
+```bash
+python run.py train --config examples/config/resnet_v0.yml
+python run.py predict --config examples/config/resnet_v0.yml --checkpoint checkpoint_best_195000_0.8626.pt
 ```
 
+# 5. Citation
 
-There are two ways to specify parameter settings for each command:
+```bibtex
+@article{chen2023deep,
+  title   = {A Deep-Learning Scheme for Hydrometeor Type Classification Using Passive Microwave Observations},
+  author  = {Chen, Ruiyao and Bennartz, Ralf},
+  journal = {Remote Sensing},
+  volume  = {15},
+  number  = {10},
+  pages   = {2670},
+  year    = {2023},
+  doi     = {10.3390/rs15102670}
+}
+```
 
-- **YML-based configuration file**, You can specify the values of parameters in a YML config file (See more examples in the config folder of each dataset)
-```
-$ python run.py train --config examples/config/resnet_v0.yml
-```
+# License
 
-- **Command line arguments**, you can append line arguments with different parameters indicators. For example, you can perform the following command to run predit task using a well-trained checkpoint. 
-
-```
-$ python run.py predict --config examples/config/resnet_v0.yml --checkpoint checkpoint_best_195000_0.8626.pt
-```
+MIT. See [LICENSE](LICENSE).
